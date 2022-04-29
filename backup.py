@@ -6,7 +6,7 @@ import shutil
 
 LOG_FILE_PATH = "/home/morgan/backup/backup.log"
 BACKUP_DIR_PATH = "/home/morgan/DYSK/backups"
-DIR_TO_BACKUP_PATH = "/home/morgan/docker"
+DIR_TO_BACKUP_PATH = "/home/morgan"
 DIR_NAME = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 BACKUP_DIR_NAME = BACKUP_DIR_PATH + "/" + DIR_NAME
 DAYS_TO_KEEP = 7
@@ -27,8 +27,8 @@ with open(LOG_FILE_PATH, 'a+') as LOG_FILE:
     os.mkdir(DIR_NAME)
     LOG_FILE.write(f"[{datetime.now()}] Creating new direcory: {DIR_NAME}\n")
     
-    LOG_FILE.write(f"[{datetime.now()}] Running `rsync -az --exclude '/home/morgan/backup' --info=stats2 {DIR_TO_BACKUP_PATH} {BACKUP_DIR_NAME}`\n")
-    rsync_out = subprocess.run(['rsync', '-az', '--exclude \'/home/morgan/backup\'', '--info=stats2', DIR_TO_BACKUP_PATH, BACKUP_DIR_NAME], stdout=subprocess.PIPE).stdout.decode('utf-8')
+    LOG_FILE.write(f"[{datetime.now()}] Running `rsync -az --exclude-from='/home/morgan/backup/rsync-exclude.txt' --info=stats2 {DIR_TO_BACKUP_PATH} {BACKUP_DIR_NAME}`\n")
+    rsync_out = subprocess.run(['rsync', '-az', '--exclude-from=\'/home/morgan/backup/rsync-exclude.txt\'', '--info=stats2', DIR_TO_BACKUP_PATH, BACKUP_DIR_NAME], stdout=subprocess.PIPE).stdout.decode('utf-8')
     
     for line in rsync_out.splitlines():
         LOG_FILE.write(f"\t{line}\n")
