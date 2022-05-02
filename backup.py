@@ -7,12 +7,12 @@ import shutil
 LOG_FILE_PATH = "/home/morgan/backup/backup.log"
 BACKUP_DIR_PATH = "/home/morgan/DYSK/backups"
 DIR_TO_BACKUP_PATH = "/home/morgan"
-DIR_NAME = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+DIR_NAME = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 BACKUP_DIR_NAME = BACKUP_DIR_PATH + "/" + DIR_NAME
 DAYS_TO_KEEP = 7
 SECONDS_IN_DAY = 86400
 # 1 day = 86400 seconds
-COMPRESS_BACKUP = True # True / False
+COMPRESS_BACKUP = True # True / FalseS
 DELETE_COMPRESSED = True # True / False
 
 with open(LOG_FILE_PATH, 'a+') as LOG_FILE:
@@ -24,7 +24,7 @@ with open(LOG_FILE_PATH, 'a+') as LOG_FILE:
     os.chdir(BACKUP_DIR_PATH)
     LOG_FILE.write(f"[{datetime.now()}] Changing directory to: {BACKUP_DIR_PATH}\n")
     
-    os.mkdir(DIR_NAME)
+    os.mkdir(DIR_NAME.encode('utf8'))
     LOG_FILE.write(f"[{datetime.now()}] Creating new direcory: {DIR_NAME}\n")
     
     LOG_FILE.write(f"[{datetime.now()}] Running `rsync -az --exclude-from='/home/morgan/backup/rsync-exclude.txt' --info=stats2 {DIR_TO_BACKUP_PATH} {BACKUP_DIR_NAME}`\n")
@@ -50,13 +50,13 @@ with open(LOG_FILE_PATH, 'a+') as LOG_FILE:
     old_files = []
     
     for item in dir_directories:
-        if (mktime(datetime.strptime(item, "%Y-%m-%d %H:%M:%S").timetuple()) + DAYS_TO_KEEP * SECONDS_IN_DAY) < int(time()):
+        if (mktime(datetime.strptime(item, "%Y-%m-%d_%H-%M-%S").timetuple()) + DAYS_TO_KEEP * SECONDS_IN_DAY) < int(time()):
             old_directories.append(item)
             LOG_FILE.write(f"\tDirectory: {item}\n")
     
     for item in dir_files:
         item_tmp = item.replace(".tar.gz", "")
-        if (mktime(datetime.strptime(item_tmp, "%Y-%m-%d %H:%M:%S").timetuple()) + DAYS_TO_KEEP * SECONDS_IN_DAY) < int(time()):
+        if (mktime(datetime.strptime(item_tmp, "%Y-%m-%d_%H-%M-%S").timetuple()) + DAYS_TO_KEEP * SECONDS_IN_DAY) < int(time()):
             old_files.append(item)
             LOG_FILE.write(f"\tFile: {item}\n")
       
