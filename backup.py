@@ -28,7 +28,7 @@ with open(LOG_FILE_PATH, 'a+') as LOG_FILE:
     LOG_FILE.write(f"[{datetime.now()}] Creating new direcory: {DIR_NAME}\n")
     
     LOG_FILE.write(f"[{datetime.now()}] Running `rsync -az --exclude-from='/home/morgan/backup/rsync-exclude.txt' --info=stats2 {DIR_TO_BACKUP_PATH} {BACKUP_DIR_NAME}`\n")
-    rsync_out = subprocess.run(['rsync', '-az', '--exclude-from=\'/home/morgan/backup/rsync-exclude.txt\'', '--info=stats2', DIR_TO_BACKUP_PATH, BACKUP_DIR_NAME], stdout=subprocess.PIPE).stdout.decode('utf-8')
+    rsync_out = subprocess.run(['rsync', '-az', '--exclude-from=/home/morgan/backup/rsync-exclude.txt', '--info=stats2', DIR_TO_BACKUP_PATH, BACKUP_DIR_NAME], stdout=subprocess.PIPE).stdout.decode('utf-8')
     
     for line in rsync_out.splitlines():
         LOG_FILE.write(f"\t{line}\n")
