@@ -6,6 +6,8 @@ import subprocess
 import shutil
 import argparse
 
+from numpy import mat
+
 TIME_FORMAT = "%Y-%m-%d_%H-%M-%S"
 
 PERMISSION_USER = 1000
@@ -14,6 +16,8 @@ PERMISSION_GROUP = 1000
 LOG_FILE_PATH = "/home/morgan/backup/backup.log"
 BACKUP_DIR_PATH = "/home/morgan/DYSK/backups"
 BACKUP_DIR_NAME = "current"
+
+FREE_DISK = 2.0 # Free space on disk should be FREE_DISK times the size of a backup
 
 EXCLUDE_FILE = "/home/morgan/backup/rsync-exclude.txt"
 
@@ -24,9 +28,21 @@ BACKUP_NAME = datetime.now().strftime(TIME_FORMAT)
 
 CREATE_COPY = True # Will create a copy or archive of a backup directory each time script is run
 COMPRESS_BACKUP = True # Compress backups after syncing or not
-COMPRESSION_FORMAT = "bztar" # gztar or zip, bztar
-DELETE_OLD = True # Delete old compressed backups or not
+COMPRESSION_FORMAT = "gztar" # gztar, zip, bztar
+__ARCHIVE_EXTENSION = ""
 
+match COMPRESSION_FORMAT:
+    case "gztar":
+        __ARCHIVE_EXTENSION = ".tar.gz"
+    case "bztar":
+        __ARCHIVE_EXTENSION = ".tar.bz2"
+    case "zip":
+        __ARCHIVE_EXTENSION = "zip"
+    case _:
+        COMPRESS_BACKUP = False
+        
+
+DELETE_OLD = True # Delete old compressed backups or not
 DAYS_TO_KEEP = 7
 SECONDS_IN_DAY = 86400
 
@@ -161,6 +177,8 @@ class LOG:
             case _:
                 pass # same as none, nothing to do
         
+script_start = time()
+        
 def get_dir_size(path=DIR_TO_BACKUP_PATH):
     total = 0
     with os.scandir(path) as it:
@@ -199,7 +217,7 @@ if os.getuid() == 0 and os.getgid() == 0:
     
     dir_size = round (get_dir_size() / (2**30), 2)
     
-    if not mount_used > dir_size * 2.0:
+    if not mount_used > dir_size * FREE_DISK:
         log.write(f"Available space is not enough to create another backup.\n\
 Free space at external drive: {round(mount_free / (2**30), 2)} GiB\n\
 Size of directory to backup is: {dir_size} GiB\n\
@@ -226,11 +244,11 @@ Size of directory to backup is: {dir_size} GiB")
             start_time = time()
             if not config["dry_run"]:            
                 shutil.make_archive(BACKUP_NAME, COMPRESSION_FORMAT, f"{BACKUP_DIR_PATH}/{BACKUP_DIR_NAME}")
-                log.write(f"Compression took {time() - start_time} seconds")
                 log.write(f"Settings archive permissions USER:{PERMISSION_USER}, GROUP:{PERMISSION_GROUP}")
-                shutil.chown(f"{BACKUP_DIR_PATH}/{BACKUP_NAME}", user=PERMISSION_USER, group=PERMISSION_GROUP)
+                shutil.chown(f"{BACKUP_DIR_PATH}/{BACKUP_NAME}{__ARCHIVE_EXTENSION}", user=PERMISSION_USER, group=PERMISSION_GROUP)
             else:
                 log.write(f"Here compression take place, but --dry-run is enabled so only a placeholder")
+                
             log.write(f"Compression took {round(time() - start_time, 2)} seconds")
             
         else:
@@ -242,7 +260,8 @@ Size of directory to backup is: {dir_size} GiB")
                 chown_out = subprocess.run(["chown", "-R", f"{PERMISSION_USER}:{PERMISSION_GROUP}", f"{BACKUP_DIR_PATH}/{BACKUP_NAME}"], stdout=subprocess.PIPE).stdout.decode('utf-8')
                 log.write(chown_out)
             else:
-                log.write(f"Here copy take place, but --dry-run is enabled so only a placeholder")                
+                log.write(f"Here copy take place, but --dry-run is enabled so only a placeholder")       
+                         
             log.write(f"Copying took {round(time() - start_time, 2)} seconds")
             
     if DELETE_OLD:
@@ -275,87 +294,20 @@ Size of directory to backup is: {dir_size} GiB")
         log.write(f"Directory list:\n\t{text}")
         text = "\n\t".join(item for item in old_files) 
         log.write(f"File list:\n\t{text}")
+        
+        if not config["dry_run"]:
+            for dir in old_directories:
+                log.write(f"Deleting directory {dir}")
+                shutil.rmtree(dir)
+            
+            for file in old_files:
+                log.write(f"Deleting file {file}")
+                os.remove(file)            
+        else:
+            log.write("Here files would be deleted, by --dry-run is enabled so only placeholder")
+           
+    run_time = round(time() - script_start, 2)
+    log.write(f"End of backup script. Took {run_time} seconds, which is {round(run_time / 60.0, 2)} minutes")
+    
 else:
     print(f"\n\t{Fore.RED}Sorry but running this script without root permissions won't create full backup.{Fore.RESET}\n")
-
-# with open(LOG_FILE_PATH, 'a+') as LOG_FILE:
-#     for _ in range(75):
-#         LOG_FILE.write("=")
-#     LOG_FILE.write("\n")
-#     LOG_FILE.write(f"[{datetime.now()}] Starting backup script\n")
-    
-#     os.chdir(BACKUP_DIR_PATH)
-#     LOG_FILE.write(f"[{datetime.now()}] Changing directory to: {BACKUP_DIR_PATH}\n")
-    
-#     LOG_FILE.write(f"[{datetime.now()}] Running `rsync -az --exclude-from='/home/morgan/backup/rsync-exclude.txt' --info=stats2 {DIR_TO_BACKUP_PATH} {BACKUP_DIR_NAME}`\n")
-#     rsync_out = subprocess.run(['rsync', '-az', '--exclude-from=/home/morgan/backup/rsync-exclude.txt', '--info=stats2', DIR_TO_BACKUP_PATH, BACKUP_DIR_NAME], stdout=subprocess.PIPE).stdout.decode('utf-8')
-    
-#     for line in rsync_out.splitlines():
-#         LOG_FILE.write(f"\t{line}\n")
-        
-#     LOG_FILE.write(f"[{datetime.now()}] Listing directory after running rsync\n")
-#     for item in os.listdir(BACKUP_DIR_PATH):
-#         LOG_FILE.write(f'\t{item}\n')
-  
-# ### GETING CONTENT OF A DIRECTORY ###
-      
-#     dir_directories = next(os.walk(BACKUP_DIR_PATH), (None, [], None))[1]
-#     dir_files = next(os.walk(BACKUP_DIR_PATH), (None, None, []))[2]
-    
-# ### GETING OLD FILES AND DIRECTORIES ###
-
-#     LOG_FILE.write(f"[{datetime.now()}] Listing directories and files older then {DAYS_TO_KEEP} day(s)\n")
-    
-#     old_directories = []
-#     old_files = []
-    
-#     for item in dir_directories:
-#         if item == "current":
-#             continue
-            
-#         if (mktime(datetime.strptime(item, "%Y-%m-%d_%H-%M-%S").timetuple()) + DAYS_TO_KEEP * SECONDS_IN_DAY) < int(time()):
-#             old_directories.append(item)
-#             LOG_FILE.write(f"\tDirectory: {item}\n")
-    
-#     for item in dir_files:
-#         item_tmp = item.replace(".tar.gz", "")
-#         if (mktime(datetime.strptime(item_tmp, "%Y-%m-%d_%H-%M-%S").timetuple()) + DAYS_TO_KEEP * SECONDS_IN_DAY) < int(time()):
-#             old_files.append(item)
-#             LOG_FILE.write(f"\tFile: {item}\n")
-      
-#     if not old_directories and not old_files:
-#         LOG_FILE.write(f"\tNo directories or files older then {DAYS_TO_KEEP} day(s)\n")
-        
-# ### DELETING OLD DIRECTORIES AND FILES ###
-
-#     if old_directories:
-#         LOG_FILE.write(f"[{datetime.now()}] Deleting old directories\n")        
-#         for item in old_directories:
-#             LOG_FILE.write(f"\tDeleting: {item}\n")
-#             shutil.rmtree(item)
-    
-#     else:
-#         LOG_FILE.write(f"[{datetime.now()}] No old directories to delete\n")
-        
-#     if old_files:
-#         LOG_FILE.write(f"[{datetime.now()}] Deleting old files\n")
-#         for item in old_files:
-#             LOG_FILE.write(f"\tDeleting: {item}\n")
-#             os.remove(item)
-#     else:
-#         LOG_FILE.write(f"[{datetime.now()}] No old files to delete\n")
-
-# ### COMPRESSING ###
-        
-#     #dir_to_compress = dir_directories.pop("current")        
-#     dir_to_compress = "current"
-    
-#     if COMPRESS_BACKUP:
-#         LOG_FILE.write(f"[{datetime.now()}] Compressing directory: {dir_to_compress}\n")
-#         shutil.make_archive(BACKUP_TAR_NAME, 'gztar', BACKUP_DIR_NAME)
-            
-#     LOG_FILE.write(f"[{datetime.now()}] Listing directory at the end of the script\n")
-#     for item in os.listdir(BACKUP_DIR_PATH):
-#         LOG_FILE.write(f'\t{item}\n')    
-    
-#     LOG_FILE.write(f"[{datetime.now()}] End of backup script\n")
