@@ -14,7 +14,7 @@ PERMISSION_USER = 1000
 PERMISSION_GROUP = 1000
 
 LOG_FILE_PATH = "/home/morgan/backup/backup.log"
-BACKUP_DIR_PATH = "/home/morgan/DYSK/backups"
+BACKUP_DIR_PATH = "/home/morgan/DYSK/backup"
 BACKUP_DIR_NAME = "current"
 
 FREE_DISK = 2.0 # Free space on disk should be FREE_DISK times the size of a backup
