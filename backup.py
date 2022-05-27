@@ -6,8 +6,6 @@ import subprocess
 import shutil
 import argparse
 
-from numpy import mat
-
 TIME_FORMAT = "%Y-%m-%d_%H-%M-%S"
 
 PERMISSION_USER = 1000
